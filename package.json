@@ -1,0 +1,18 @@
+{
+  "name": "ragflag",
+  "version": "0.0.0",
+  "description": "Boolean flag manager with MongoDB (using Mongoose) persistence.",
+  "main": "ragflag.js",
+  "scripts": {
+    "test": "istanbul test ./node_modules/.bin/_mocha -- -R spec"
+  },
+  "keywords": [
+    "flags",
+    "boolean",
+    "mongo",
+    "flag"
+  ],
+  "author": "Bloglovin <dev@bloglovin.com>",
+  "license": "MIT"
+}
+
