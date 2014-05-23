@@ -13,6 +13,8 @@
     "flag"
   ],
   "author": "Bloglovin <dev@bloglovin.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "contra": "~1.6.3"
+  }
 }
-
