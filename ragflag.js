@@ -1,10 +1,6 @@
 //
 // # RagFlag
 //
-// @TODO: Clean up vocabular to make it easier to distinguish between the
-// different things.
-// @TODO: Be consistent with name/id order.
-//
 
 /* jshint node: true */
 'use strict';
@@ -15,56 +11,56 @@ var assert = require('assert');
 
 var contra = require('contra');
 
-var Collection = require('./lib/collection');
+var Flags = require('./lib/flags');
 
-var RagFlag = module.exports = function RagFlag(mongoose, connection, opts) {
+var RagFlag = module.exports = function RagFlag(connection, opts) {
   EventEmitter.call(this);
 
   opts = opts || {};
   this.connection = connection;
-  this.defaultCollections= opts.defaultCollections || 'flags';
-  this.collections = {};
+  this.defaultNamespace= opts.defaultNamespace || 'flags';
+  this.namespaces = {};
   this.queue = contra.queue(this.performSave.bind(this), opts.concurrent || 2);
-  this.Collection = mongoose.model('RagFlags', {
-    name: String,
+  this.Flags = connection.model('RagFlags', {
     identifier: Number,
-    flags: []
+    flags: connection.Schema.Types.Mixed
   });
 
-  if (opts.collections) {
-    this.configure(opts.collections);
+  if (opts.namespaces) {
+    this.configure(opts.namespaces);
   }
 };
 
 inherits(RagFlag, EventEmitter);
 
-RagFlag.prototype.configure = function ragflagConfigure(collection, flags) {
-  // Could use a merge instead. But I guess this essentially is that, without
-  // the lib.
-  if (!(collection instanceof String)) {
-    for (var c in collection) {
-      this.configure(c, collection[c]);
+RagFlag.prototype.configure = function ragflagConfigure(namespace, flags) {
+  if (!(namespace instanceof String)) {
+    for (var n in namespace) {
+      this.configure(n, namespace[n]);
     }
     return;
   }
 
-  assert(collection instanceof String, 'Collection name must be a string.');
+  assert(namespace instanceof String, 'Namespace name must be a string.');
   assert(Array.isArray(flags), 'Flags must be an array.');
-  this.collections[collection] = flags;
+  this.namespacse[namespace] = flags;
 };
 
 RagFlag.prototype.get = function ragflagGet(name, id, fn) {
-  var identifier = { identifier: id, name: name };
+  assert(this.namespaces[name], 'Invalid namespace.');
+  var identifier = { identifier: id };
   var self = this;
-  this.Collection.findOne(identifier, function ragFetch(err, c) {
+  // @TODO: Handle case of empty response and return default Flags
+  this.Flags.findOne(identifier, function ragFetch(err, c) {
     if (err) return fn(err, null);
-    var instance = new Collection(c.name, c.identifier, c.flags, self);
+    var instance = new Flags(name, c.identifier, c.flags[name], self);
+    fn(null, instance);
   });
 };
 
-RagFlag.prototype.validateFlag = function ragflagValidate(flag, collection) {
-  var hasCollection = Array.isarray(this.collections[collection]);
-  var hasFlag = hasCollection && this.collections[collection].indexOf(flag);
+RagFlag.prototype.validateFlag = function ragflagValidate(flag, namespace) {
+  var hasNamespace= Array.isarray(this.namespaces[namespace]);
+  var hasFlag = hasNamespace && this.namespaces[namespace].indexOf(flag);
   return hasFlag !== -1;
 };
 
@@ -85,20 +81,21 @@ RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
 };
 
 RagFlag.prototype.performSave = function ragflagPerformSave(job, done) {
-  var identifier = { identifier: job.id, name: job.name };
+  var identifier = { identifier: job.id };
   var self = this;
-  this.Collection.findOne(identifier, function ragFetch(err, c) {
+  this.Flags.findOne(identifier, function ragFetch(err, c) {
     if (err) return done(err, null);
 
-    var index = c.flags.indexOf(job.flag);
+    var flags = c.namespaces[job.name] || [];
+    var index = flags.indexOf(job.flag);
     // If on and flag is not already there
     if (job.on && index === -1) {
-      c.flags.push(job.flag);
+      c.namespaces[job.name].push(job.flag);
       c.save(handleSave);
     }
     // If off and flag is there
     else if (job.off && index !== -1){
-      c.flags.splice(index, 1);
+      c.namespaces[job.name].splice(index, 1);
       c.save(handleSave);
     }
     // Nothing to update
