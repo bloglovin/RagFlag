@@ -16,7 +16,7 @@ such, mainly so that you don't write a typo or something.
 ```javascript
 var connection = mongoose.createConnection();
 var RagFlag = require('ragflag');
-var flags = new RagFlag(connection);
+var ragflag = new RagFlag(connection);
 
 // `user_state` in this case is a `namespace`, ie. a collection of flags.
 // You can have how many you'd like and each collection can have any number of
@@ -25,7 +25,7 @@ var flags = new RagFlag(connection);
 // In this example we are configuring flags that track our user's progress
 // through an onboarding or similar. We might use this state to decide whether
 // or not we want to show a tooltip or something.
-flags.configure('user_state', [
+ragflag.configure('user_state', [
   'has_seen_new_thing',
   'has_visited_special_page'
 ]);
@@ -41,10 +41,10 @@ include the template for a special dialog that tells a first time user what
 they are seeing.
 
 ```javascript
-flags.get('user_state', user.id, function (err, collection) {
-  if (!collection.check('has_visited_special_page')) {
+ragflag.get('user_state', user.id, function (err, flags) {
+  if (!flags.check('has_visited_special_page')) {
     renderHelpDialog();
-    collection.set('has_visited_special_page', true);
+    flags.set('has_visited_special_page', true);
   }
 });
 ```
