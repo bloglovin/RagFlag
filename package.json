@@ -16,5 +16,10 @@
   "license": "MIT",
   "dependencies": {
     "contra": "~1.6.3"
+  },
+  "devDependencies": {
+    "mocha": "~1.19.0",
+    "istanbul": "~0.2.10",
+    "mongoose": "~3.8.11"
   }
 }

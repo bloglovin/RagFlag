@@ -23,7 +23,7 @@ var RagFlag = module.exports = function RagFlag(connection, opts) {
   this.queue = contra.queue(this.performSave.bind(this), opts.concurrent || 2);
   this.Flags = connection.model('RagFlags', {
     identifier: Number,
-    flags: connection.Schema.Types.Mixed
+    flags: {}
   });
 
   if (opts.namespaces) {
@@ -34,34 +34,36 @@ var RagFlag = module.exports = function RagFlag(connection, opts) {
 inherits(RagFlag, EventEmitter);
 
 RagFlag.prototype.configure = function ragflagConfigure(namespace, flags) {
-  if (!(namespace instanceof String)) {
+  if (typeof namespace === 'object') {
     for (var n in namespace) {
       this.configure(n, namespace[n]);
     }
     return;
   }
 
-  assert(namespace instanceof String, 'Namespace name must be a string.');
+  assert(typeof namespace === 'string', 'Namespace name must be a string.');
   assert(Array.isArray(flags), 'Flags must be an array.');
-  this.namespacse[namespace] = flags;
+  this.namespaces[namespace] = flags;
 };
 
 RagFlag.prototype.get = function ragflagGet(name, id, fn) {
   assert(this.namespaces[name], 'Invalid namespace.');
   var identifier = { identifier: id };
   var self = this;
-  // @TODO: Handle case of empty response and return default Flags
-  this.Flags.findOne(identifier, function ragFetch(err, c) {
+  this.Flags.findOne(identifier, 'flags', { lean: true }, function ragFetch(err, c) {
+    /* istanbul ignore if */
     if (err) return fn(err, null);
-    var instance = new Flags(name, c.identifier, c.flags[name], self);
+    var flags = c ? c.flags[name] : false;
+    var instance = new Flags(name, id, flags, self);
     fn(null, instance);
   });
 };
 
-RagFlag.prototype.validateFlag = function ragflagValidate(flag, namespace) {
-  var hasNamespace= Array.isarray(this.namespaces[namespace]);
-  var hasFlag = hasNamespace && this.namespaces[namespace].indexOf(flag);
-  return hasFlag !== -1;
+RagFlag.prototype.validateFlag = function ragflagValidate(namespace, flag) {
+  var hasNamespace = Array.isArray(this.namespaces[namespace]);
+  if (!hasNamespace) return false;
+  var hasFlag = this.namespaces[namespace].indexOf(flag) !== -1;
+  return hasFlag;
 };
 
 RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
@@ -72,39 +74,35 @@ RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
     on: on
   };
 
-  if (fn instanceof Function) {
-    this.queue.unshift(job, fn);
+  var self = this;
+  if (typeof fn === 'function') {
+    this.queue.unshift(job, function () {
+      self.emit('saved', job);
+      fn.apply(fn, arguments);
+    });
   }
   else {
-    this.queue.push(job);
+    this.queue.push(job, function () {
+      self.emit('saved', job);
+    });
   }
 };
 
 RagFlag.prototype.performSave = function ragflagPerformSave(job, done) {
   var identifier = { identifier: job.id };
   var self = this;
-  this.Flags.findOne(identifier, function ragFetch(err, c) {
-    if (err) return done(err, null);
-
-    var flags = c.namespaces[job.name] || [];
-    var index = flags.indexOf(job.flag);
-    // If on and flag is not already there
-    if (job.on && index === -1) {
-      c.namespaces[job.name].push(job.flag);
-      c.save(handleSave);
-    }
-    // If off and flag is there
-    else if (job.off && index !== -1){
-      c.namespaces[job.name].splice(index, 1);
-      c.save(handleSave);
-    }
-    // Nothing to update
-    else {
-      done();
-    }
-  });
-
-  function handleSave(err) {
+  var update = { flags: {} };
+  /* istanbul ignore else */
+  if (!update.flags[job.name]) {
+    update.flags[job.name] = {};
+  }
+  update.flags[job.name][job.flag] = job.on;
+  var options = {
+    upsert: true
+  };
+  this.Flags.findOneAndUpdate(identifier, update, options, handleSave);
+  function handleSave(err, doc) {
+    /* istanbul ignore if */
     if (err) {
       self.emit('error', err);
     }
