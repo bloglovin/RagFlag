@@ -146,7 +146,7 @@ describe('Flags', function () {
             assert(flags.flags.monkey === false);
             done();
           });
-        })
+        });
       });
     });
   });
