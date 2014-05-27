@@ -1,6 +1,6 @@
 {
   "name": "ragflag",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Boolean flag manager with MongoDB (using Mongoose) persistence.",
   "main": "ragflag.js",
   "scripts": {
