@@ -20,7 +20,7 @@ var RagFlag = module.exports = function RagFlag(connection, opts) {
   this.connection = connection;
   this.defaultNamespace= opts.defaultNamespace || 'flags';
   this.namespaces = {};
-  this.queue = contra.queue(this.performSave.bind(this), opts.concurrent || 2);
+  this.queue = contra.queue(ragflagPerformSave(this), opts.concurrent || 2);
   this.Flags = connection.model('RagFlags', {
     identifier: Number,
     flags: {}
@@ -88,25 +88,25 @@ RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
   }
 };
 
-RagFlag.prototype.performSave = function ragflagPerformSave(job, done) {
-  var identifier = { identifier: job.id };
-  var self = this;
-  var update = { flags: {} };
-  /* istanbul ignore else */
-  if (!update.flags[job.name]) {
+function ragflagPerformSave(context) {
+  return function (job, done) {
+    var identifier = { identifier: job.id };
+    var self = this;
+    var update = { flags: {} };
     update.flags[job.name] = {};
-  }
-  update.flags[job.name][job.flag] = job.on;
-  var options = {
-    upsert: true
-  };
-  this.Flags.findOneAndUpdate(identifier, update, options, handleSave);
-  function handleSave(err, doc) {
-    /* istanbul ignore if */
-    if (err) {
-      self.emit('error', err);
+    update.flags[job.name][job.flag] = job.on;
+    var options = {
+      upsert: true
+    };
+    context.Flags.findOneAndUpdate(identifier, update, options, handleSave);
+
+    function handleSave(err, doc) {
+      /* istanbul ignore if */
+      if (err) {
+        context.emit('error', err);
+      }
+      done();
     }
-    done();
   }
 };
 
