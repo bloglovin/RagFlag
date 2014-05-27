@@ -91,13 +91,13 @@ RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
 function ragflagPerformSave(context) {
   return function (job, done) {
     var identifier = { identifier: job.id };
-    var self = this;
     var update = { flags: {} };
     update.flags[job.name] = {};
     update.flags[job.name][job.flag] = job.on;
-    var options = {
-      upsert: true
-    };
+    update = {$set: {}};
+    update.$set['flags.' + job.name + '.' + job.flag] = job.on;
+    var options = { upsert: true };
+
     context.Flags.findOneAndUpdate(identifier, update, options, handleSave);
 
     function handleSave(err, doc) {
@@ -107,6 +107,6 @@ function ragflagPerformSave(context) {
       }
       done();
     }
-  }
-};
+  };
+}
 
