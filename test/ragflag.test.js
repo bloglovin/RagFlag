@@ -93,6 +93,19 @@ describe('RagFlag', function () {
       throw err;
     });
   });
+
+  it('initializing a flag works', function () {
+    var rag = new RagFlag(connection);
+    rag.configure('foobar', ['monkey', 'anteloop']);
+
+    var flags = rag.initFlag('foobar', 1, {
+      monkey: false,
+      anteloop: true
+    });
+
+    assert(!flags.check('monkey'));
+    assert(flags.check('anteloop'));
+  });
 });
 
 describe('Flags', function () {
@@ -148,6 +161,25 @@ describe('Flags', function () {
           });
         });
       });
+    });
+  });
+
+  it('flag is correctly serialized', function () {
+    var rag = new RagFlag(connection);
+    rag.configure('foobar', ['monkey', 'anteloop']);
+
+    var flags = rag.initFlag('foobar', 1, {
+      monkey: false,
+      anteloop: true
+    });
+
+    assert.deepEqual(flags.serialize(), {
+      namespace: 'foobar',
+      id: 1,
+      flags: {
+        monkey: false,
+        anteloop: true
+      }
     });
   });
 });

@@ -88,6 +88,19 @@ RagFlag.prototype.save = function ragflagSave(name, id, flag, on, fn) {
   }
 };
 
+RagFlag.prototype.initFlag = function ragflagInitFlag(namespace, id, flags) {
+  var self = this;
+  var valid = Object.keys(flags).map(function (flagName) {
+    return self.validateFlag(namespace, flags[flagName]);
+  }).indexOf(false) !== -1;
+
+  var errmsg = 'Invalid flag: ' + flag + ' for collection: ' + this.name;
+  assert(valid, errmsg);
+
+  var flag = new Flags(namespace, id, flags, this);
+  return flag;
+};
+
 function ragflagPerformSave(context) {
   return function (job, done) {
     var identifier = { identifier: job.id };
