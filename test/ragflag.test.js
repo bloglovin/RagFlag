@@ -9,12 +9,14 @@ var mongoose = require('mongoose');
 var RagFlag = require('../');
 var Flags = require('../lib/flags');
 
-if (!process.env.MONGO) console.log('no mongodb connection configured, using default');
+if (!process.env.MONGO) console.error('no mongodb connection configured, using default');
+var mongoUri = process.env.MONGO || 'mongodb://127.0.0.1:27017';
 var connection = null;
 
 describe('RagFlag', function () {
   beforeEach(function (done) {
-    connection = mongoose.createConnection(process.env.MONGO + '/testRagFlag', done);
+    connection = mongoose.createConnection(mongoUri + '/testRagFlag', done);
+
   });
 
   afterEach(function (done) {
@@ -58,8 +60,8 @@ describe('RagFlag', function () {
     rag.save('foobar', 1, 'monkey', true);
 
     rag.on('saved', function (job) {
-      assert.equal(job.name, 'foobar');
-      assert.equal(job.id, 1);
+      assert.equal(job.namespace, 'foobar');
+      assert.equal(job.identifier, 1);
       assert.equal(job.flag, 'monkey');
       assert.equal(job.on, true);
 
@@ -110,7 +112,7 @@ describe('RagFlag', function () {
 
 describe('Flags', function () {
   beforeEach(function (done) {
-    connection = mongoose.createConnection(process.env.MONGO + '/testRagFlag', done);
+    connection = mongoose.createConnection(mongoUri + '/testRagFlag', done);
   });
 
   afterEach(function (done) {
@@ -149,14 +151,14 @@ describe('Flags', function () {
     rag.get('foobar', 1, function (err, flags) {
       flags.set('monkey', true, function (err) {
         assert(!err);
-        // Save changes without "flags" knowing aout i
+        // Save changes without "flags" knowing about it
         rag.save('foobar', 1, 'monkey', false, function (err) {
           assert(!err);
 
           var didEmitRefreshed = false;
           flags.on('refreshed', function () { didEmitRefreshed = true; });
           flags.refresh(function (err) {
-            assert(flags.flags.monkey === false);
+            assert(flags.flags.monkey !== true);
             done();
           });
         });
@@ -175,7 +177,7 @@ describe('Flags', function () {
 
     assert.deepEqual(flags.serialize(), {
       namespace: 'foobar',
-      id: 1,
+      identifier: 1,
       flags: {
         monkey: false,
         anteloop: true
@@ -183,4 +185,3 @@ describe('Flags', function () {
     });
   });
 });
-
